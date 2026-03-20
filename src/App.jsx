@@ -47,15 +47,6 @@ async function generateTopic(userInput) {
   return await res.json();
 }
 
-Write in a casual, warm, slightly humorous tone. This is Ally's personal knowledge archive -- make it feel like a real conversation, not a textbook. Write in second person or first person plural ("we explored..."). No em-dashes.`
-      }]
-    })
-  });
-  const data = await res.json();
-  const text = data.content.map(i => i.text || "").join("\n");
-  const clean = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
-}
 
 // ═══════════════════════════════════════════════════════════════
 // COMPONENTS
