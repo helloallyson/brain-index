@@ -265,8 +265,8 @@ function PasswordGate({ onUnlock }) {
   const [pw, setPw] = useState("");
   const [wrong, setWrong] = useState(false);
   const handleSubmit = () => {
-    const hash = Array.from(pw).reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-    if (hash === -1028445882) {
+    const correct = [100,105,101,116,99,111,107,101].map(c=>String.fromCharCode(c)).join("");
+    if (pw === correct) {
       sessionStorage.setItem("brain-unlocked", "true");
       onUnlock();
     } else {
