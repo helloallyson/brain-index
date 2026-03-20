@@ -1,10 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { db } from "./firebase.js";
-import { collection, doc, setDoc, deleteDoc, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query } from "firebase/firestore";
 
-// ═══════════════════════════════════════════════════════════════
-// NO SEED TOPICS — blank slate, build as you go
-// ═══════════════════════════════════════════════════════════════
 const SEED_TOPICS = [];
 
 const CAT_COLORS = {
@@ -34,9 +31,6 @@ const CAT_COLORS = {
   "Nature & Animals":  { bg: "#e0f2f1", text: "#004d40", accent: "#26a69a" },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// AI TOPIC GENERATOR
-// ═══════════════════════════════════════════════════════════════
 async function generateTopic(userInput) {
   const res = await fetch("/.netlify/functions/generate-topic", {
     method: "POST",
@@ -47,6 +41,38 @@ async function generateTopic(userInput) {
   return await res.json();
 }
 
+// ═══════════════════════════════════════════════════════════════
+// PASSWORD GATE
+// ═══════════════════════════════════════════════════════════════
+const PW_CHECK = "diet" + "coke";
+
+function PasswordGate({ onUnlock }) {
+  const [pw, setPw] = useState("");
+  const [wrong, setWrong] = useState(false);
+  const handleSubmit = () => {
+    if (pw === PW_CHECK) {
+      sessionStorage.setItem("brain-unlocked", "true");
+      onUnlock();
+    } else {
+      setWrong(true);
+      setTimeout(() => setWrong(false), 1500);
+    }
+  };
+  return (
+    <div style={{minHeight:"100vh",background:"#faf9f7",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
+      <div style={{textAlign:"center",maxWidth:400,padding:40}}>
+        <div style={{fontSize:64,marginBottom:16}}>{"\u{1F9E0}"}</div>
+        <h2 style={{fontSize:28,fontWeight:800,fontFamily:"'Fraunces',serif",color:"#1a1a2e",marginBottom:8}}>{"Ally\u2019s Brain Index"}</h2>
+        <p style={{fontSize:14,color:"#999",marginBottom:28}}>This encyclopedia is private. Enter the password to continue.</p>
+        <div style={{display:"flex",gap:8}}>
+          <input type="password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => {if(e.key==="Enter") handleSubmit();}} placeholder="Password" autoFocus style={{flex:1,padding:"12px 16px",border:wrong?"2px solid #e74c5e":"2px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif"}} />
+          <button onClick={handleSubmit} style={{padding:"12px 20px",borderRadius:12,border:"none",background:"#1a1a2e",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Enter</button>
+        </div>
+        {wrong && <p style={{color:"#e74c5e",fontSize:13,marginTop:12}}>Wrong password. Try again!</p>}
+      </div>
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════
 // COMPONENTS
@@ -102,14 +128,14 @@ function AddTopicPanel({ onAdd, onClose }) {
       }}>
         <div style={{
           background: "linear-gradient(135deg, #c0956c, #8b6914)",
-          padding: "28px 28px 24px", color: "#fff"
+          padding: "28px 28px 24px", color: "#fff", position: "relative"
         }}>
           <button onClick={onClose} style={{
             position: "absolute", top: 16, right: 16, background: "rgba(255,255,255,0.2)",
             border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer",
             color: "#fff", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center"
-          }}>✕</button>
-          <div style={{ fontSize: 32, marginBottom: 6 }}>🧠</div>
+          }}>&#x2715;</button>
+          <div style={{ fontSize: 32, marginBottom: 6 }}>{"\u{1F9E0}"}</div>
           <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Fraunces', serif", margin: 0 }}>Add to the Encyclopedia</h2>
           <p style={{ fontSize: 13, opacity: 0.85, marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>Ask a question or describe a topic. AI will generate a full encyclopedia entry.</p>
         </div>
@@ -118,7 +144,7 @@ function AddTopicPanel({ onAdd, onClose }) {
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="e.g. 'What is dopamine and why does it matter?' or 'The history of crossbody bags' or 'How does sourdough starter work?'"
+            placeholder={"e.g. 'What is dopamine?' or 'The history of crossbody bags'"}
             rows={4}
             onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
             style={{
@@ -129,7 +155,7 @@ function AddTopicPanel({ onAdd, onClose }) {
           />
           {error && <p style={{ color: "#e74c5e", fontSize: 13, marginTop: 8, fontFamily: "'DM Sans', sans-serif" }}>{error}</p>}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-            <span style={{ fontSize: 11, color: "#ccc", fontFamily: "'DM Sans', sans-serif" }}>⌘Enter to submit</span>
+            <span style={{ fontSize: 11, color: "#ccc", fontFamily: "'DM Sans', sans-serif" }}>{"\u2318"}Enter to submit</span>
             <button
               onClick={handleSubmit}
               disabled={!input.trim() || loading}
@@ -178,12 +204,12 @@ function ExpandedCard({ topic, onClose, onDelete }) {
               background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "50%",
               width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 14,
               display: "flex", alignItems: "center", justifyContent: "center"
-            }}>🗑</button>
+            }}>{"\u{1F5D1}"}</button>
             <button onClick={onClose} style={{
               background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "50%",
               width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 18,
               display: "flex", alignItems: "center", justifyContent: "center"
-            }}>✕</button>
+            }}>&#x2715;</button>
           </div>
           <div style={{ fontSize: 48, marginBottom: 8 }}>{topic.icon}</div>
           <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0, fontFamily: "'Fraunces', serif" }}>{topic.title}</h2>
@@ -202,7 +228,7 @@ function ExpandedCard({ topic, onClose, onDelete }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {(topic.takeaways || []).map((t, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, background: colors.bg, borderRadius: 12, padding: "10px 14px" }}>
-                  <span style={{ color: colors.accent, fontWeight: 800, fontSize: 14, flexShrink: 0 }}>→</span>
+                  <span style={{ color: colors.accent, fontWeight: 800, fontSize: 14, flexShrink: 0 }}>{"\u2192"}</span>
                   <span style={{ fontSize: 13.5, color: "#444", lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>{t}</span>
                 </div>
               ))}
@@ -252,7 +278,7 @@ function TopicCard({ topic, onClick, index }) {
             <span key={tag} style={{ fontSize: 11, background: "#f8f8fa", color: "#888", padding: "3px 10px", borderRadius: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{tag}</span>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: colors.accent, marginTop: 14, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", opacity: hovered ? 1 : 0, transform: hovered ? "translateY(0)" : "translateY(4px)", transition: "all 0.2s ease" }}>Click to read more →</div>
+        <div style={{ fontSize: 12, color: colors.accent, marginTop: 14, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", opacity: hovered ? 1 : 0, transform: hovered ? "translateY(0)" : "translateY(4px)", transition: "all 0.2s ease" }}>{"Click to read more \u2192"}</div>
       </div>
     </article>
   );
@@ -261,68 +287,8 @@ function TopicCard({ topic, onClick, index }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
-) {
-  const [pw, setPw] = React.useState("");
-  const [wrong, setWrong] = React.useState(false);
-  const handleSubmit = () => {
-    const correct = "diet" + "coke";
-    if (pw === correct) {
-      sessionStorage.setItem("brain-unlocked", "true");
-      onUnlock();
-    } else {
-      setWrong(true);
-      setTimeout(() => setWrong(false), 1500);
-    }
-  };
-  return React.createElement("div", {style: {minHeight:"100vh",background:"#faf9f7",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}},
-    React.createElement("div", {style: {textAlign:"center",maxWidth:400,padding:40}},
-      React.createElement("div", {style: {fontSize:64,marginBottom:16}}, "\u{1F9E0}"),
-      React.createElement("h1", {style: {fontSize:28,fontWeight:800,fontFamily:"'Fraunces',serif",color:"#1a1a2e",marginBottom:8}}, "Ally's Brain Index"),
-      React.createElement("p", {style: {fontSize:14,color:"#999",marginBottom:28}}, "This encyclopedia is private. Enter the password to continue."),
-      React.createElement("div", {style: {display:"flex",gap:8}},
-        React.createElement("input", {type:"password",value:pw,onChange:function(e){setPw(e.target.value)},onKeyDown:function(e){if(e.key==="Enter")handleSubmit()},placeholder:"Password",autoFocus:true,style:{flex:1,padding:"12px 16px",border:wrong?"2px solid #e74c5e":"2px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif"}}),
-        React.createElement("button", {onClick:handleSubmit,style:{padding:"12px 20px",borderRadius:12,border:"none",background:"#1a1a2e",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}, "Enter")
-      ),
-      wrong ? React.createElement("p", {style: {color:"#e74c5e",fontSize:13,marginTop:12}}, "Wrong password. Try again!") : null
-    )
-  );
-}
-
-const PASSWORD = "diet" + "coke";
-
-function PasswordGate({ onUnlock }) {
-  const [pw, setPw] = useState("");
-  const [wrong, setWrong] = useState(false);
-  const handleSubmit = () => {
-    if (pw === PASSWORD) {
-      sessionStorage.setItem("brain-unlocked", "true");
-      onUnlock();
-    } else {
-      setWrong(true);
-      setTimeout(() => setWrong(false), 1500);
-    }
-  };
-  return (
-    <div style={{minHeight:"100vh",background:"#faf9f7",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
-      <div style={{textAlign:"center",maxWidth:400,padding:40}}>
-        <div style={{fontSize:64,marginBottom:16}}>{"\u{1F9E0}"}</div>
-        <h2 style={{fontSize:28,fontWeight:800,fontFamily:"'Fraunces',serif",color:"#1a1a2e",marginBottom:8}}>{"Ally\u2019s Brain Index"}</h2>
-        <p style={{fontSize:14,color:"#999",marginBottom:28}}>This encyclopedia is private. Enter the password to continue.</p>
-        <div style={{display:"flex",gap:8}}>
-          <input type="password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => {if(e.key==="Enter") handleSubmit()}} placeholder="Password" autoFocus style={{flex:1,padding:"12px 16px",border:wrong?"2px solid #e74c5e":"2px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif"}} />
-          <button onClick={handleSubmit} style={{padding:"12px 20px",borderRadius:12,border:"none",background:"#1a1a2e",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Enter</button>
-        </div>
-        {wrong && <p style={{color:"#e74c5e",fontSize:13,marginTop:12}}>Wrong password. Try again!</p>}
-      </div>
-    </div>
-  );
-}
-
 export default function PersonalEncyclopediaSite() {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("brain-unlocked") === "true");
-  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
-  
-
+  const [unlocked, setUnlocked] = useState(false);
   const [customTopics, setCustomTopics] = useState([]);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(null);
@@ -334,8 +300,14 @@ export default function PersonalEncyclopediaSite() {
   const [loaded, setLoaded] = useState(false);
   const searchRef = useRef(null);
 
+  // Check password on mount
+  useEffect(() => {
+    if (sessionStorage.getItem("brain-unlocked") === "true") setUnlocked(true);
+  }, []);
+
   // Real-time sync with Firebase
   useEffect(() => {
+    if (!unlocked) return;
     const q = query(collection(db, "topics"));
     const unsub = onSnapshot(q, (snapshot) => {
       const topics = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -347,7 +319,7 @@ export default function PersonalEncyclopediaSite() {
       setLoaded(true);
     });
     return () => unsub();
-  }, []);
+  }, [unlocked]);
 
   const handleAddTopic = useCallback(async (topic) => {
     try {
@@ -398,6 +370,9 @@ export default function PersonalEncyclopediaSite() {
   const clearAll = () => { setSearch(""); setActiveCategory(null); setActiveTags([]); };
   const hasFilters = search || activeCategory || activeTags.length > 0;
 
+  // Show password gate
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+
   if (!loaded) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", color: "#ccc" }}>Loading encyclopedia...</div>;
 
   return (
@@ -419,12 +394,12 @@ export default function PersonalEncyclopediaSite() {
       `}</style>
 
       <header style={{ textAlign: "center", padding: "52px 24px 16px", animation: "heroIn 0.6s ease", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: 18, left: "8%", fontSize: 26, opacity: 0.12, animation: "float 4s ease infinite" }}>✦</div>
-        <div style={{ position: "absolute", top: 50, right: "10%", fontSize: 20, opacity: 0.1, animation: "float 5s ease infinite 1s" }}>◯</div>
-        <div style={{ position: "absolute", top: 80, left: "20%", fontSize: 15, opacity: 0.08, animation: "float 3.5s ease infinite 0.5s" }}>✧</div>
+        <div style={{ position: "absolute", top: 18, left: "8%", fontSize: 26, opacity: 0.12, animation: "float 4s ease infinite" }}>{"\u2726"}</div>
+        <div style={{ position: "absolute", top: 50, right: "10%", fontSize: 20, opacity: 0.1, animation: "float 5s ease infinite 1s" }}>{"\u25EF"}</div>
+        <div style={{ position: "absolute", top: 80, left: "20%", fontSize: 15, opacity: 0.08, animation: "float 3.5s ease infinite 0.5s" }}>{"\u2727"}</div>
 
         <div style={{ display: "inline-block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#c0956c", marginBottom: 12, background: "#c0956c15", padding: "6px 18px", borderRadius: 20 }}>Personal Encyclopedia</div>
-        <h1 className="hero-title" style={{ fontSize: 50, fontWeight: 800, fontFamily: "'Fraunces', serif", color: "#1a1a2e", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 10 }}>Ally's Brain Index</h1>
+        <h1 className="hero-title" style={{ fontSize: 50, fontWeight: 800, fontFamily: "'Fraunces', serif", color: "#1a1a2e", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 10 }}>{"Ally\u2019s Brain Index"}</h1>
         <p style={{ fontSize: 16, color: "#999", maxWidth: 520, margin: "0 auto 6px", lineHeight: 1.6 }}>
           A curated collection of rabbit holes, deep dives, and random knowledge. Organized by chaos, sorted by curiosity, fueled by Diet Coke.
         </p>
@@ -442,19 +417,18 @@ export default function PersonalEncyclopediaSite() {
       </header>
 
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 60px" }}>
-        {/* Search + Add */}
         <div style={{ maxWidth: 560, margin: "0 auto 24px", display: "flex", gap: 10, alignItems: "center" }}>
           <div style={{ position: "relative", flex: 1 }}>
-            <span style={{ position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)", fontSize: 18, color: "#ccc", pointerEvents: "none" }}>⌕</span>
+            <span style={{ position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)", fontSize: 18, color: "#ccc", pointerEvents: "none" }}>{"\u2315"}</span>
             <input ref={searchRef} type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={allTopics.length > 0 ? "Search topics, tags, ideas..." : "Add your first topic with the + button →"}
+              placeholder={allTopics.length > 0 ? "Search topics, tags, ideas..." : "Add your first topic with the + button"}
               style={{ width: "100%", padding: "14px 80px 14px 48px", border: "2px solid #eee", borderRadius: 16, fontSize: 15, outline: "none", background: "#fff", color: "#333", fontFamily: "'DM Sans', sans-serif", transition: "border-color 0.2s, box-shadow 0.2s" }}
               onFocus={e => { e.target.style.borderColor = "#c0956c"; e.target.style.boxShadow = "0 4px 20px rgba(192,149,108,0.12)"; }}
               onBlur={e => { e.target.style.borderColor = "#eee"; e.target.style.boxShadow = "none"; }}
             />
-            <span style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#ccc", background: "#f5f5f5", padding: "4px 8px", borderRadius: 6, fontWeight: 600, pointerEvents: "none" }}>⌘K</span>
+            <span style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#ccc", background: "#f5f5f5", padding: "4px 8px", borderRadius: 6, fontWeight: 600, pointerEvents: "none" }}>{"\u2318K"}</span>
           </div>
-          <button onClick={() => setShowAddPanel(true)} title="Add topic (⌘N)" style={{
+          <button onClick={() => setShowAddPanel(true)} title="Add topic" style={{
             width: 48, height: 48, borderRadius: 14, border: "none", background: "#1a1a2e",
             color: "#fff", fontSize: 22, cursor: "pointer", flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -462,7 +436,6 @@ export default function PersonalEncyclopediaSite() {
           }} onMouseEnter={e => e.target.style.background = "#c0956c"} onMouseLeave={e => e.target.style.background = "#1a1a2e"}>+</button>
         </div>
 
-        {/* Category filters -- only show if there are topics */}
         {categories.length > 0 && (
           <>
             <div className="cat-scroll" style={{ display: "flex", gap: 7, justifyContent: "center", marginBottom: 12, flexWrap: "wrap", padding: "0 8px" }}>
@@ -473,16 +446,14 @@ export default function PersonalEncyclopediaSite() {
                 return <button key={cat} onClick={() => setActiveCategory(active ? null : cat)} style={{ padding: "7px 15px", borderRadius: 11, border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", background: active ? (c.accent || "#666") : "#f0efed", color: active ? "#fff" : "#888" }}>{cat}</button>;
               })}
             </div>
-
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginBottom: showFilters ? 12 : 24 }}>
-              <button onClick={() => setShowFilters(!showFilters)} style={{ background: "none", border: "none", fontSize: 12, color: "#bbb", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{showFilters ? "Hide tags ▴" : "Filter by tags ▾"}</button>
+              <button onClick={() => setShowFilters(!showFilters)} style={{ background: "none", border: "none", fontSize: 12, color: "#bbb", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{showFilters ? "Hide tags \u25B4" : "Filter by tags \u25BE"}</button>
               <div style={{ width: 1, height: 14, background: "#e0e0e0" }} />
               <div style={{ display: "flex", gap: 4 }}>
-                <button onClick={() => setViewMode("grid")} style={{ background: viewMode === "grid" ? "#1a1a2e" : "#f0efed", border: "none", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13, color: viewMode === "grid" ? "#fff" : "#aaa" }}>⊞</button>
-                <button onClick={() => setViewMode("list")} style={{ background: viewMode === "list" ? "#1a1a2e" : "#f0efed", border: "none", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13, color: viewMode === "list" ? "#fff" : "#aaa" }}>☰</button>
+                <button onClick={() => setViewMode("grid")} style={{ background: viewMode === "grid" ? "#1a1a2e" : "#f0efed", border: "none", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13, color: viewMode === "grid" ? "#fff" : "#aaa" }}>{"\u229E"}</button>
+                <button onClick={() => setViewMode("list")} style={{ background: viewMode === "list" ? "#1a1a2e" : "#f0efed", border: "none", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 13, color: viewMode === "list" ? "#fff" : "#aaa" }}>{"\u2630"}</button>
               </div>
             </div>
-
             {showFilters && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 24, maxWidth: 720, margin: "0 auto 24px", animation: "fadeIn 0.2s ease" }}>
                 {allTags.map(tag => {
@@ -491,7 +462,6 @@ export default function PersonalEncyclopediaSite() {
                 })}
               </div>
             )}
-
             {hasFilters && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 20, animation: "fadeIn 0.2s ease" }}>
                 <span style={{ fontSize: 13, color: "#999" }}>{filtered.length} {filtered.length === 1 ? "topic" : "topics"} found</span>
@@ -501,7 +471,6 @@ export default function PersonalEncyclopediaSite() {
           </>
         )}
 
-        {/* Content */}
         {filtered.length > 0 ? (
           viewMode === "grid" ? (
             <div className="grid-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
@@ -526,33 +495,31 @@ export default function PersonalEncyclopediaSite() {
                       </div>
                       <p style={{ fontSize: 13, color: "#999", margin: "4px 0 0", lineHeight: 1.4, fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{topic.description}</p>
                     </div>
-                    <span style={{ color: "#ddd", fontSize: 16, flexShrink: 0 }}>→</span>
+                    <span style={{ color: "#ddd", fontSize: 16, flexShrink: 0 }}>{"\u2192"}</span>
                   </div>
                 );
               })}
             </div>
           )
         ) : (
-          /* Empty state */
           <div style={{ textAlign: "center", padding: "80px 20px", animation: "fadeIn 0.4s ease" }}>
             {allTopics.length === 0 ? (
               <>
-                <div style={{ fontSize: 64, marginBottom: 16 }}>🧠</div>
+                <div style={{ fontSize: 64, marginBottom: 16 }}>{"\u{1F9E0}"}</div>
                 <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Fraunces', serif", color: "#1a1a2e", marginBottom: 8 }}>Your encyclopedia is empty</h2>
                 <p style={{ fontSize: 15, color: "#999", maxWidth: 400, margin: "0 auto 24px", lineHeight: 1.6 }}>
                   This is your blank slate. Ask a question, explore a topic, start a rabbit hole. Hit the + button to add your first entry.
                 </p>
                 <button onClick={() => setShowAddPanel(true)} style={{
                   padding: "14px 28px", borderRadius: 14, border: "none", background: "#1a1a2e",
-                  color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer",
-                  fontFamily: "'DM Sans', sans-serif", transition: "background 0.2s"
+                  color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif"
                 }} onMouseEnter={e => e.target.style.background = "#c0956c"} onMouseLeave={e => e.target.style.background = "#1a1a2e"}>
                   + Add Your First Topic
                 </button>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>{"\u{1F50D}"}</div>
                 <p style={{ fontSize: 16, fontWeight: 600, color: "#aaa", marginBottom: 6 }}>No topics found</p>
                 <p style={{ fontSize: 13, color: "#ccc" }}>Try a different search or clear your filters</p>
               </>
@@ -562,8 +529,8 @@ export default function PersonalEncyclopediaSite() {
       </main>
 
       <footer style={{ textAlign: "center", padding: "32px 24px 40px", borderTop: "1px solid #eee" }}>
-        <p style={{ fontSize: 12, color: "#ccc", fontFamily: "'Fraunces', serif", fontStyle: "italic" }}>Curated by curiosity · Powered by chaos · Fueled by Diet Coke</p>
-        <p style={{ fontSize: 11, color: "#ddd", marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>Born in Des Moines · Built one rabbit hole at a time</p>
+        <p style={{ fontSize: 12, color: "#ccc", fontFamily: "'Fraunces', serif", fontStyle: "italic" }}>{"Curated by curiosity \u00B7 Powered by chaos \u00B7 Fueled by Diet Coke"}</p>
+        <p style={{ fontSize: 11, color: "#ddd", marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>{"Born in Des Moines \u00B7 Built one rabbit hole at a time"}</p>
       </footer>
 
       {expandedTopic && <ExpandedCard topic={expandedTopic} onClose={() => setExpandedTopic(null)} onDelete={handleDeleteTopic} />}
