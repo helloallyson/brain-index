@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { db } from "./firebase.js";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query } from "firebase/firestore";
 
 // ═══════════════════════════════════════════════════════════════
 // NO SEED TOPICS — blank slate, build as you go
@@ -271,32 +273,35 @@ export default function PersonalEncyclopediaSite() {
   const [loaded, setLoaded] = useState(false);
   const searchRef = useRef(null);
 
-  // Load custom topics from localStorage
+  // Real-time sync with Firebase
   useEffect(() => {
+    const q = query(collection(db, "topics"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const topics = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      topics.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setCustomTopics(topics);
+      setLoaded(true);
+    }, (err) => {
+      console.error("Firebase error:", err);
+      setLoaded(true);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleAddTopic = useCallback(async (topic) => {
     try {
-      const stored = localStorage.getItem("encyclopedia-topics");
-      if (stored) setCustomTopics(JSON.parse(stored));
-    } catch (e) { /* no stored topics yet */ }
-    setLoaded(true);
-  }, []);
-
-  // Save custom topics to localStorage
-  const saveCustomTopics = useCallback((topics) => {
-    setCustomTopics(topics);
-    try { localStorage.setItem("encyclopedia-topics", JSON.stringify(topics)); } catch (e) { console.error(e); }
-  }, []);
-
-  const handleAddTopic = useCallback((topic) => {
-    const updated = [topic, ...customTopics];
-    saveCustomTopics(updated);
+      topic.createdAt = Date.now();
+      await setDoc(doc(db, "topics", topic.id), topic);
+    } catch (e) { console.error("Save error:", e); }
     setShowAddPanel(false);
-  }, [customTopics, saveCustomTopics]);
+  }, []);
 
-  const handleDeleteTopic = useCallback((id) => {
-    const updated = customTopics.filter(t => t.id !== id);
-    saveCustomTopics(updated);
+  const handleDeleteTopic = useCallback(async (id) => {
+    try {
+      await deleteDoc(doc(db, "topics", id));
+    } catch (e) { console.error("Delete error:", e); }
     setExpandedTopic(null);
-  }, [customTopics, saveCustomTopics]);
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
