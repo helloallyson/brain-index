@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { db } from "./firebase.js";
 import { collection, doc, setDoc, deleteDoc, onSnapshot, orderBy, query } from "firebase/firestore";
 
@@ -262,8 +262,8 @@ function TopicCard({ topic, onClick, index }) {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 function PasswordGate({ onUnlock }) {
-  const [pw, setPw] = useState("");
-  const [wrong, setWrong] = useState(false);
+  const [pw, setPw] = React.useState("");
+  const [wrong, setWrong] = React.useState(false);
   const handleSubmit = () => {
     const correct = "diet" + "coke";
     if (pw === correct) {
@@ -274,39 +274,28 @@ function PasswordGate({ onUnlock }) {
       setTimeout(() => setWrong(false), 1500);
     }
   };
-  return (
-    <div style={{ minHeight: "100vh", background: "#faf9f7", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif" }}>
-
-      <div style={{ textAlign: "center", maxWidth: 400, padding: 40 }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🧠</div>
-        <h1 style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Fraunces', serif", color: "#1a1a2e", marginBottom: 8 }}>Ally's Brain Index</h1>
-        <p style={{ fontSize: 14, color: "#999", marginBottom: 28 }}>This encyclopedia is private. Enter the password to continue.</p>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="password"
-            value={pw}
-            onChange={e => setPw(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
-            placeholder="Password"
-            autoFocus
-            style={{
-              flex: 1, padding: "12px 16px", border: wrong ? "2px solid #e74c5e" : "2px solid #eee",
-              borderRadius: 12, fontSize: 15, outline: "none", fontFamily: "'DM Sans', sans-serif",
-              transition: "border-color 0.2s"
-            }}
-          />
-          <button onClick={handleSubmit} style={{
-            padding: "12px 20px", borderRadius: 12, border: "none", background: "#1a1a2e",
-            color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif"
-          }}>Enter</button>
-        </div>
-        {wrong && <p style={{ color: "#e74c5e", fontSize: 13, marginTop: 12 }}>Wrong password. Try again!</p>}
-      </div>
-    </div>
+  return React.createElement("div", {style: {minHeight:"100vh",background:"#faf9f7",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}},
+    React.createElement("div", {style: {textAlign:"center",maxWidth:400,padding:40}},
+      React.createElement("div", {style: {fontSize:64,marginBottom:16}}, "\u{1F9E0}"),
+      React.createElement("h1", {style: {fontSize:28,fontWeight:800,fontFamily:"'Fraunces',serif",color:"#1a1a2e",marginBottom:8}}, "Ally's Brain Index"),
+      React.createElement("p", {style: {fontSize:14,color:"#999",marginBottom:28}}, "This encyclopedia is private. Enter the password to continue."),
+      React.createElement("div", {style: {display:"flex",gap:8}},
+        React.createElement("input", {type:"password",value:pw,onChange:function(e){setPw(e.target.value)},onKeyDown:function(e){if(e.key==="Enter")handleSubmit()},placeholder:"Password",autoFocus:true,style:{flex:1,padding:"12px 16px",border:wrong?"2px solid #e74c5e":"2px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif"}}),
+        React.createElement("button", {onClick:handleSubmit,style:{padding:"12px 20px",borderRadius:12,border:"none",background:"#1a1a2e",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}, "Enter")
+      ),
+      wrong ? React.createElement("p", {style: {color:"#e74c5e",fontSize:13,marginTop:12}}, "Wrong password. Try again!") : null
+    )
   );
 }
 
 export default function PersonalEncyclopediaSite() {
+  const [unlocked, setUnlocked] = useState(false);
+  
+  useEffect(() => {
+    if (sessionStorage.getItem("brain-unlocked") === "true") setUnlocked(true);
+  }, []);
+
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("brain-unlocked") === "true");
   if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
   const [customTopics, setCustomTopics] = useState([]);
