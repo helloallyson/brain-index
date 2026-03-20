@@ -261,7 +261,54 @@ function TopicCard({ topic, onClick, index }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
+function PasswordGate({ onUnlock }) {
+  const [pw, setPw] = useState("");
+  const [wrong, setWrong] = useState(false);
+  const handleSubmit = () => {
+    const hash = Array.from(pw).reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+    if (hash === -1028445882) {
+      sessionStorage.setItem("brain-unlocked", "true");
+      onUnlock();
+    } else {
+      setWrong(true);
+      setTimeout(() => setWrong(false), 1500);
+    }
+  };
+  return (
+    <div style={{ minHeight: "100vh", background: "#faf9f7", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{\`@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;500;600;700&display=swap');\`}</style>
+      <div style={{ textAlign: "center", maxWidth: 400, padding: 40 }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>🧠</div>
+        <h1 style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Fraunces', serif", color: "#1a1a2e", marginBottom: 8 }}>Ally's Brain Index</h1>
+        <p style={{ fontSize: 14, color: "#999", marginBottom: 28 }}>This encyclopedia is private. Enter the password to continue.</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="password"
+            value={pw}
+            onChange={e => setPw(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
+            placeholder="Password"
+            autoFocus
+            style={{
+              flex: 1, padding: "12px 16px", border: wrong ? "2px solid #e74c5e" : "2px solid #eee",
+              borderRadius: 12, fontSize: 15, outline: "none", fontFamily: "'DM Sans', sans-serif",
+              transition: "border-color 0.2s"
+            }}
+          />
+          <button onClick={handleSubmit} style={{
+            padding: "12px 20px", borderRadius: 12, border: "none", background: "#1a1a2e",
+            color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif"
+          }}>Enter</button>
+        </div>
+        {wrong && <p style={{ color: "#e74c5e", fontSize: 13, marginTop: 12 }}>Wrong password. Try again!</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function PersonalEncyclopediaSite() {
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("brain-unlocked") === "true");
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
   const [customTopics, setCustomTopics] = useState([]);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(null);
