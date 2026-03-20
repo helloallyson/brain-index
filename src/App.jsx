@@ -276,7 +276,7 @@ function PasswordGate({ onUnlock }) {
   };
   return (
     <div style={{ minHeight: "100vh", background: "#faf9f7", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{\`@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;500;600;700&display=swap');\`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
       <div style={{ textAlign: "center", maxWidth: 400, padding: 40 }}>
         <div style={{ fontSize: 64, marginBottom: 16 }}>🧠</div>
         <h1 style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Fraunces', serif", color: "#1a1a2e", marginBottom: 8 }}>Ally's Brain Index</h1>
