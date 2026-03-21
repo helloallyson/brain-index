@@ -31,11 +31,31 @@ const CAT_COLORS = {
   "Nature & Animals":  { bg: "#e0f2f1", text: "#004d40", accent: "#26a69a" },
 };
 
-async function generateTopic(userInput) {
+async function generateFromText(userInput) {
   const res = await fetch("/.netlify/functions/generate-topic", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ topic: userInput })
+  });
+  if (!res.ok) throw new Error("Function call failed");
+  return await res.json();
+}
+
+async function generateFromURL(url) {
+  const res = await fetch("/.netlify/functions/generate-topic", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: url })
+  });
+  if (!res.ok) throw new Error("Function call failed");
+  return await res.json();
+}
+
+async function generateFromImage(base64) {
+  const res = await fetch("/.netlify/functions/generate-topic", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: base64 })
   });
   if (!res.ok) throw new Error("Function call failed");
   return await res.json();
@@ -92,26 +112,58 @@ function StatBar({ topics }) {
 }
 
 function AddTopicPanel({ onAdd, onClose }) {
+  const [mode, setMode] = useState("text");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [preview, setPreview] = useState(null);
   const inputRef = useRef(null);
+  const fileRef = useRef(null);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { if (mode !== "photo") inputRef.current?.focus(); }, [mode]);
 
   const handleSubmit = async () => {
-    if (!input.trim() || loading) return;
+    if (loading) return;
     setLoading(true); setError(null);
     try {
-      const topic = await generateTopic(input.trim());
+      let topic;
+      if (mode === "text") {
+        if (!input.trim()) return setLoading(false);
+        topic = await generateFromText(input.trim());
+      } else if (mode === "url") {
+        if (!input.trim()) return setLoading(false);
+        let url = input.trim();
+        if (!url.startsWith("http")) url = "https://" + url;
+        topic = await generateFromURL(url);
+      } else if (mode === "photo") {
+        if (!preview) return setLoading(false);
+        topic = await generateFromImage(preview);
+      }
       topic.id = "custom-" + Date.now();
       onAdd(topic);
-      setInput("");
+      setInput(""); setPreview(null);
     } catch (e) {
-      setError("Couldn't generate that one. Try again or rephrase it!");
+      setError("Couldn't generate that one. Try again!");
       console.error(e);
     }
     setLoading(false);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const b64 = reader.result.split(",")[1];
+      setPreview(b64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const modeConfig = {
+    text: { icon: "\u{1F4AD}", label: "Ask", placeholder: "e.g. 'What is dopamine?' or 'The history of crossbody bags'" },
+    url: { icon: "\u{1F517}", label: "URL", placeholder: "Paste a URL... e.g. https://en.wikipedia.org/wiki/Diet_Coke" },
+    photo: { icon: "\u{1F4F7}", label: "Photo", placeholder: "" }
   };
 
   return (
@@ -137,35 +189,102 @@ function AddTopicPanel({ onAdd, onClose }) {
           }}>&#x2715;</button>
           <div style={{ fontSize: 32, marginBottom: 6 }}>{"\u{1F9E0}"}</div>
           <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Fraunces', serif", margin: 0 }}>Add to the Encyclopedia</h2>
-          <p style={{ fontSize: 13, opacity: 0.85, marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>Ask a question or describe a topic. AI will generate a full encyclopedia entry.</p>
+          <p style={{ fontSize: 13, opacity: 0.85, marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>Ask a question, paste a URL, or snap a photo.</p>
         </div>
-        <div style={{ padding: "24px 28px 28px" }}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder={"e.g. 'What is dopamine?' or 'The history of crossbody bags'"}
-            rows={4}
-            onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
-            style={{
-              width: "100%", padding: 14, border: "2px solid #eee", borderRadius: 14,
-              fontSize: 14, outline: "none", resize: "vertical", fontFamily: "'DM Sans', sans-serif",
-              lineHeight: 1.6, color: "#333"
-            }}
-          />
+        <div style={{ padding: "20px 28px 28px" }}>
+          {/* Mode tabs */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+            {Object.entries(modeConfig).map(([key, val]) => (
+              <button key={key} onClick={() => { setMode(key); setError(null); setPreview(null); setInput(""); }}
+                style={{
+                  flex: 1, padding: "10px 8px", borderRadius: 12, border: "none",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                  background: mode === key ? "#1a1a2e" : "#f0efed",
+                  color: mode === key ? "#fff" : "#888",
+                  transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6
+                }}>
+                <span>{val.icon}</span> {val.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Text / URL input */}
+          {mode !== "photo" && (
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder={modeConfig[mode].placeholder}
+              rows={mode === "url" ? 2 : 4}
+              onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
+              style={{
+                width: "100%", padding: 14, border: "2px solid #eee", borderRadius: 14,
+                fontSize: 14, outline: "none", resize: "vertical", fontFamily: "'DM Sans', sans-serif",
+                lineHeight: 1.6, color: "#333"
+              }}
+            />
+          )}
+
+          {/* Photo input */}
+          {mode === "photo" && (
+            <div style={{ marginBottom: 4 }}>
+              <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange}
+                style={{ display: "none" }} />
+              
+              {!preview ? (
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => { fileRef.current.setAttribute("capture", "environment"); fileRef.current.click(); }}
+                    style={{
+                      flex: 1, padding: "28px 16px", borderRadius: 14, border: "2px dashed #ddd",
+                      background: "#fafafa", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 14, color: "#888", display: "flex", flexDirection: "column",
+                      alignItems: "center", gap: 8
+                    }}>
+                    <span style={{ fontSize: 32 }}>{"\u{1F4F8}"}</span>
+                    Take Photo
+                  </button>
+                  <button onClick={() => { fileRef.current.removeAttribute("capture"); fileRef.current.click(); }}
+                    style={{
+                      flex: 1, padding: "28px 16px", borderRadius: 14, border: "2px dashed #ddd",
+                      background: "#fafafa", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 14, color: "#888", display: "flex", flexDirection: "column",
+                      alignItems: "center", gap: 8
+                    }}>
+                    <span style={{ fontSize: 32 }}>{"\u{1F5BC}"}</span>
+                    Upload Image
+                  </button>
+                </div>
+              ) : (
+                <div style={{ position: "relative", textAlign: "center" }}>
+                  <img src={"data:image/jpeg;base64," + preview} alt="Preview"
+                    style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 12, objectFit: "contain" }} />
+                  <button onClick={() => { setPreview(null); }}
+                    style={{
+                      position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)",
+                      border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer",
+                      color: "#fff", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center"
+                    }}>&#x2715;</button>
+                </div>
+              )}
+            </div>
+          )}
+
           {error && <p style={{ color: "#e74c5e", fontSize: 13, marginTop: 8, fontFamily: "'DM Sans', sans-serif" }}>{error}</p>}
+          
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-            <span style={{ fontSize: 11, color: "#ccc", fontFamily: "'DM Sans', sans-serif" }}>{"\u2318"}Enter to submit</span>
+            <span style={{ fontSize: 11, color: "#ccc", fontFamily: "'DM Sans', sans-serif" }}>
+              {mode === "photo" ? "Take or upload a photo" : "\u2318Enter to submit"}
+            </span>
             <button
               onClick={handleSubmit}
-              disabled={!input.trim() || loading}
+              disabled={(mode !== "photo" && !input.trim()) || (mode === "photo" && !preview) || loading}
               style={{
                 padding: "10px 24px", borderRadius: 12, border: "none",
                 background: loading ? "#ddd" : "#1a1a2e", color: loading ? "#999" : "#fff",
                 fontSize: 14, fontWeight: 600, cursor: loading ? "default" : "pointer",
                 fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s"
               }}
-            >{loading ? "Generating..." : "Add Topic"}</button>
+            >{loading ? (mode === "url" ? "Extracting..." : mode === "photo" ? "Analyzing..." : "Generating...") : "Add Topic"}</button>
           </div>
         </div>
       </div>
